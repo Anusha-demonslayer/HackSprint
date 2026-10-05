@@ -1,0 +1,6 @@
+{
+  "name": "SecOps-Pulse",
+  "description": "Autonomous AI Incident Response Agent for Tier-1 SOC",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

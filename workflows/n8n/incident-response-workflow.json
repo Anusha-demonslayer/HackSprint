@@ -1,0 +1,104 @@
+{
+  "name": "SecOps-Pulse Autonomous Incident Response",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "secops-alert",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook: Ingest Security Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "event_type",
+              "value": "={{ $json.body.event_type || 'authentication' }}"
+            },
+            {
+              "name": "user",
+              "value": "={{ $json.body.user || 'employee_247' }}"
+            },
+            {
+              "name": "source_ip",
+              "value": "={{ $json.body.source_ip || '185.220.101.5' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "normalize-event",
+      "name": "Normalize Security Event",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "GET",
+        "url": "={{ $env.SECOPS_PULSE_URL || 'http://localhost:3000' }}/api/threat-intel/{{ $node['Normalize Security Event'].json['source_ip'] }}",
+        "options": {}
+      },
+      "id": "threat-intel",
+      "name": "Enrich Threat Intelligence",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "={{ $env.SECOPS_PULSE_URL || 'http://localhost:3000' }}/api/events",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={\n  \"event_type\": \"{{ $node['Normalize Security Event'].json['event_type'] }}\",\n  \"user\": \"{{ $node['Normalize Security Event'].json['user'] }}\",\n  \"source_ip\": \"{{ $node['Normalize Security Event'].json['source_ip'] }}\",\n  \"threat_score\": {{ $json.confidence || 98 }},\n  \"description\": \"Ingested via n8n automation pipeline\"\n}"
+      },
+      "id": "post-secops",
+      "name": "Post to SecOps-Pulse Autonomous Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: Ingest Security Event": {
+      "main": [
+        [
+          {
+            "node": "Normalize Security Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Security Event": {
+      "main": [
+        [
+          {
+            "node": "Enrich Threat Intelligence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich Threat Intelligence": {
+      "main": [
+        [
+          {
+            "node": "Post to SecOps-Pulse Autonomous Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
